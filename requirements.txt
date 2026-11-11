@@ -1,0 +1,22 @@
+﻿# Backend
+fastapi
+uvicorn[standard]
+sqlalchemy
+pydantic
+pydantic-settings
+python-dotenv
+
+# Data engineering
+numpy
+pandas
+faker
+
+# Route optimization
+ortools
+
+# Dashboard
+streamlit
+
+# Testing
+pytest
+httpx

@@ -1,0 +1,46 @@
+{
+    "dataset": "SchoolRoute AI synthetic anomaly test dataset",
+    "seed": 20261022,
+    "source_database": "schoolroute.db",
+    "anomaly_database": "data/generated/schoolroute_anomalies.db",
+    "labels_separated_from_validation_input": true,
+    "anomalies": [
+        {
+            "anomaly_id": "ANOM-001",
+            "issue_type": "bus_capacity_exceeded",
+            "affected_record_type": "Bus",
+            "affected_record_id": "BUS-000001",
+            "expected_detection": "Active assignments (10) exceed bus capacity (9)."
+        },
+        {
+            "anomaly_id": "ANOM-002",
+            "issue_type": "incompatible_accessibility_assignment",
+            "affected_record_type": "Assignment",
+            "affected_record_id": "ASN-STU-000011-2026",
+            "related_record_id": "BUS-000001",
+            "expected_detection": "A student requiring an accessible vehicle is assigned to a non-accessible bus."
+        },
+        {
+            "anomaly_id": "ANOM-003",
+            "issue_type": "impossible_route_travel_time",
+            "affected_record_type": "Route",
+            "affected_record_id": "ROUTE-2026-000001",
+            "expected_detection": "Route travel time (30 minutes) exceeds the declared route duration (1 minute)."
+        },
+        {
+            "anomaly_id": "ANOM-004",
+            "issue_type": "invalid_contact_notification",
+            "affected_record_type": "Notification",
+            "affected_record_id": "NOT-2026-000001",
+            "related_record_id": "GRD-000001-01",
+            "expected_detection": "A sent notification is associated with an invalid guardian contact."
+        },
+        {
+            "anomaly_id": "ANOM-005",
+            "issue_type": "unapproved_student_address",
+            "affected_record_type": "Student",
+            "affected_record_id": "STU-000001",
+            "expected_detection": "A student with an active assignment has an unapproved address."
+        }
+    ]
+}
