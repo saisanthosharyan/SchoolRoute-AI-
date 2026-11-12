@@ -193,7 +193,10 @@ class Bus(Base):
     capacity_effective_to: Mapped[date | None] = mapped_column(Date, nullable=True)
 
     routes: Mapped[list["Route"]] = relationship(back_populates="bus")
-
+    capacity_events: Mapped[list["BusCapacityEvent"]] = relationship(
+        back_populates="bus",
+        order_by="BusCapacityEvent.effective_from",
+    )
     __table_args__ = (
         CheckConstraint("capacity > 0", name="ck_bus_capacity"),
         CheckConstraint(
@@ -268,6 +271,11 @@ class Route(Base):
 
     assignments: Mapped[list["Assignment"]] = relationship(
         back_populates="route"
+    )
+
+    disruption_events: Mapped[list["RouteDisruptionEvent"]] = relationship(
+        back_populates="route",
+        order_by="RouteDisruptionEvent.started_at",
     )
 
     __table_args__ = (
@@ -505,4 +513,168 @@ class Notification(Base):
             name="ck_notification_status",
         ),
         Index("ix_notification_student", "student_id"),
+    )
+    # ============================================================
+# 12. BUS CAPACITY EVENT
+# ============================================================
+
+class BusCapacityEvent(Base):
+    """
+    Preserve every bus capacity change as a historical event.
+    Never overwrite previous capacity history.
+    """
+
+    __tablename__ = "bus_capacity_events"
+
+    capacity_event_id: Mapped[str] = mapped_column(
+        String(40), primary_key=True
+    )
+
+    bus_id: Mapped[str] = mapped_column(
+        ForeignKey("buses.bus_id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+
+    previous_capacity: Mapped[int] = mapped_column(
+        Integer, nullable=False
+    )
+
+    new_capacity: Mapped[int] = mapped_column(
+        Integer, nullable=False
+    )
+
+    effective_from: Mapped[date] = mapped_column(
+        Date, nullable=False
+    )
+
+    recorded_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=utc_now,
+        nullable=False,
+    )
+
+    reason: Mapped[str] = mapped_column(
+        String(250), nullable=False
+    )
+
+    changed_by: Mapped[str] = mapped_column(
+        String(100), default="system", nullable=False
+    )
+
+    bus: Mapped["Bus"] = relationship(
+        back_populates="capacity_events"
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "previous_capacity > 0",
+            name="ck_capacity_event_previous",
+        ),
+        CheckConstraint(
+            "new_capacity > 0",
+            name="ck_capacity_event_new",
+        ),
+        CheckConstraint(
+            "previous_capacity != new_capacity",
+            name="ck_capacity_event_changed",
+        ),
+        Index(
+            "ix_capacity_event_bus_date",
+            "bus_id",
+            "effective_from",
+        ),
+    )
+
+
+# ============================================================
+# 13. ROUTE DISRUPTION EVENT
+# ============================================================
+
+class RouteDisruptionEvent(Base):
+    """
+    Preserve route disruptions and their resolution history.
+    """
+
+    __tablename__ = "route_disruption_events"
+
+    disruption_event_id: Mapped[str] = mapped_column(
+        String(40), primary_key=True
+    )
+
+    route_id: Mapped[str] = mapped_column(
+        ForeignKey("routes.route_id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+
+    affected_stop_id: Mapped[str | None] = mapped_column(
+        ForeignKey("stops.stop_id", ondelete="RESTRICT"),
+        nullable=True,
+    )
+
+    disruption_type: Mapped[str] = mapped_column(
+        String(30), nullable=False
+    )
+
+    severity: Mapped[str] = mapped_column(
+        String(20), nullable=False
+    )
+
+    description: Mapped[str] = mapped_column(
+        Text, nullable=False
+    )
+
+    started_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=utc_now,
+        nullable=False,
+    )
+
+    resolved_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
+    status: Mapped[str] = mapped_column(
+        String(20), default="active", nullable=False
+    )
+
+    resolution_notes: Mapped[str | None] = mapped_column(
+        Text, nullable=True
+    )
+
+    route: Mapped["Route"] = relationship(
+        back_populates="disruption_events"
+    )
+
+    affected_stop: Mapped["Stop | None"] = relationship()
+
+    __table_args__ = (
+        CheckConstraint(
+            "disruption_type IN "
+            "('traffic', 'weather', 'vehicle_breakdown', "
+            "'road_closure', 'driver_unavailable', "
+            "'safety_incident', 'other')",
+            name="ck_disruption_type",
+        ),
+        CheckConstraint(
+            "severity IN ('low', 'medium', 'high', 'critical')",
+            name="ck_disruption_severity",
+        ),
+        CheckConstraint(
+            "status IN ('active', 'resolved', 'cancelled')",
+            name="ck_disruption_status",
+        ),
+        CheckConstraint(
+            "resolved_at IS NULL OR resolved_at >= started_at",
+            name="ck_disruption_resolution_time",
+        ),
+        Index(
+            "ix_disruption_route_started",
+            "route_id",
+            "started_at",
+        ),
+        Index(
+            "ix_disruption_status",
+            "status",
+        ),
     )

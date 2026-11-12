@@ -4,9 +4,9 @@
 
 SchoolRoute AI is a school transportation management and optimization project designed around realistic synthetic operational data. It models students, guardians, school zones, bus stops, buses, drivers, routes, assignments, attendance events, and notifications.
 
-The project focuses on building a reliable data foundation, validating transportation constraints, identifying operational anomalies, and developing toward an optimized school transportation workflow.
+The project focuses on building a reliable data foundation, validating transportation constraints, identifying operational anomalies, and developing an optimized school transportation workflow.
 
-> **Project status:** Active development. The database schema, synthetic data generators, baseline operations generator, attendance generation, data export, and anomaly validation are implemented. Full-scale operational processing, optimization integration, API, dashboard, and automated test coverage remain under development.
+> **Project status:** Active development. The 13-table database schema, synthetic master data, full-scale route planning, student assignments, 200-day attendance generation, simulated notifications, operational event history, anomaly validation, CSV/JSON/JSONL exports, and initial automated tests are implemented. Broader automated testing, API, dashboard, and production integrations remain under development.
 
 ---
 
@@ -19,8 +19,8 @@ The project focuses on building a reliable data foundation, validating transport
 - Validate capacity, accessibility, route timing, and contact constraints.
 - Inject controlled operational anomalies.
 - Keep anomaly ground-truth labels separate from validation inputs.
-- Export structured CSV and JSON datasets with integrity manifests.
-- Build toward constraint-aware route optimization.
+- Export structured CSV, JSON, and JSONL datasets with integrity manifests.
+- Build constraint-aware route optimization workflows.
 
 ## 2. Technology Stack
 
@@ -55,10 +55,14 @@ SchoolRoute-AI/
 |   |   +-- master_data.py
 |   |   +-- full_master_data.py
 |   |   +-- operations.py
+|   |   +-- full_operations.py
 |   |   +-- attendance.py
+|   |   +-- full_attendance.py
 |   |   +-- anomaly_data.py
 |   |   +-- export_data.py
+|   |   +-- export_full_data.py
 |   +-- services/
+|   |   +-- event_service.py
 |   +-- validators/
 |       +-- data_validator.py
 |
@@ -70,10 +74,12 @@ SchoolRoute-AI/
 +-- dashboard/
 +-- docs/
 |   +-- DATA_MODEL.md
+|   +-- AI_USAGE.md
 +-- prompts/
 +-- scripts/
 |   +-- validate_anomalies.py
 +-- tests/
+|   +-- test_event_service.py
 |
 +-- .env.example
 +-- .gitignore
@@ -82,7 +88,7 @@ SchoolRoute-AI/
 
 ## 4. Database Design
 
-The relational database currently contains 11 entities.
+The relational database currently contains 13 entities.
 
 | Entity | Purpose |
 |---|---|
@@ -97,8 +103,10 @@ The relational database currently contains 11 entities.
 | Assignment | Student-to-route and stop assignment |
 | AttendanceEvent | Pickup and drop-off attendance history |
 | Notification | Guardian notification records |
+| BusCapacityEvent | Historical bus capacity changes |
+| RouteDisruptionEvent | Route disruption and resolution history |
 
-Primary keys, foreign keys, relationships, and validation responsibilities are documented in [docs/DATA_MODEL.md](docs/DATA_MODEL.md).
+Primary keys, foreign keys, relationships, cardinalities, lifecycle states, and validation responsibilities are documented in [docs/DATA_MODEL.md](docs/DATA_MODEL.md).
 
 ## 5. Synthetic Dataset
 
@@ -122,7 +130,23 @@ Configured full-scale targets:
 
 The full-scale master-data generator has been executed successfully.
 
-The operational and attendance datasets are separate generation stages. Their full-scale completion is still in progress.
+The full-scale database has been populated with:
+
+- 5,000 students.
+- 6,239 guardian contacts.
+- 30 address zones.
+- 300 approved stops.
+- 100 buses and 100 drivers.
+- 100 generated routes.
+- 710 route stops.
+- 5,000 student assignments.
+- 2,000,000 attendance events.
+- 49,648 simulated guardian notifications.
+- Historical bus capacity and route disruption events.
+
+The full-scale database is generated locally as `schoolroute_full.db` and is excluded from Git.
+
+Generator scripts use dry-run defaults where applicable. Review their implementation before requesting database writes.
 
 All generated people, addresses, and contact information are synthetic and must not be treated as real personal information.
 
@@ -160,7 +184,7 @@ Generate starter operations:
 python -m app.generators.operations
 ```
 
-Generate attendance events:
+Generate starter attendance events:
 
 ```powershell
 python -m app.generators.attendance
@@ -172,7 +196,21 @@ Generate full-scale master data in the separate full-scale database:
 python -m app.generators.full_master_data
 ```
 
-**Important:** Generators are staged workflows. Do not run a generator repeatedly against an already-populated database unless its implementation explicitly supports that operation. The master-data generators check for existing data.
+Preview full-scale route planning:
+
+```powershell
+python -m app.generators.full_operations
+```
+
+Preview full-scale attendance generation:
+
+```powershell
+python -m app.generators.full_attendance
+```
+
+The full-scale route and attendance generators default to dry-run mode. Database-writing execution must be explicitly requested through their Python functions after reviewing the implementation.
+
+**Important:** Generators are staged workflows. Do not run a generator repeatedly against an already-populated database unless its implementation explicitly supports that operation. Some generators intentionally refuse to run when records already exist.
 
 ## 7. Data Validation
 
@@ -204,7 +242,34 @@ A previously executed starter-dataset validation produced:
 
 These figures describe that specific validation run, not a guarantee for every future generated dataset.
 
-## 8. Anomaly Detection
+Separate full-scale database checks also verified route, assignment, attendance, notification, event-history, foreign-key, and SQLite integrity constraints.
+
+## 8. Automated Tests
+
+The project includes nine automated event-service tests using an isolated in-memory SQLite database.
+
+Run the test suite:
+
+```powershell
+python -m pytest -v
+```
+
+The tests cover:
+
+- Bus capacity changes.
+- Historical capacity event creation.
+- Invalid capacity inputs.
+- Route disruption creation.
+- Multiple simultaneous disruptions.
+- Invalid disruption inputs.
+- Disruption resolution.
+- Resolution lifecycle rules.
+
+The tests use an isolated in-memory SQLite database and do not modify the starter or full-scale project databases.
+
+The current automated suite contains nine tests. Full-scale database integrity and operational checks have also been run separately; those checks are not yet all represented as automated pytest tests.
+
+## 9. Anomaly Detection
 
 The project includes controlled anomaly injection into a separate SQLite database.
 
@@ -236,25 +301,52 @@ The anomaly generator copies the clean starter database before injecting anomali
 
 A previous anomaly-validation run detected all five expected anomaly categories. The validator reported seven errors because two injected conditions affected more than one record.
 
-## 9. Data Export
+## 10. Data Export
 
-Run:
+The starter exporter produces CSV and JSON files from the starter database:
 
 ```powershell
 python -m app.generators.export_data
 ```
 
-The export generator produces CSV and JSON files for the database tables and a manifest containing:
+The full-scale exporter uses batched reads to handle the large database:
+
+```powershell
+python -m app.generators.export_full_data
+```
+
+The full-scale exporter generates:
+
+- CSV files for all 13 database tables.
+- JSON Lines (JSONL) files for all 13 database tables.
+- A `manifest.json` file containing dataset metadata and integrity information.
+
+**Verified full-scale export results:**
+
+| Metric | Result |
+|---|---:|
+| Database tables | 13 |
+| Total records | 2,067,229 |
+| CSV files | 13 |
+| JSONL files | 13 |
+| Total data files | 26 |
+| Batch size | 10,000 |
+| Verification errors | 0 |
+
+The manifest records:
 
 - Random seed.
 - Source database.
 - Export formats.
-- Row counts.
-- SHA-256 file hashes.
+- Batch size.
+- Per-table row counts.
+- SHA-256 file checksums.
+
+All 26 exported files passed row-count and SHA-256 checksum verification with zero errors.
 
 Generated exports are stored under `data/exports/` and excluded from Git by default.
 
-## 10. Configuration
+## 11. Configuration
 
 Important environment variables:
 
@@ -275,7 +367,7 @@ The starter database and full-scale database are separate:
 
 Database files and environment secrets are excluded from version control.
 
-## 11. Reproducibility and Data Integrity
+## 12. Reproducibility and Data Integrity
 
 The project uses a fixed random seed for repeatable synthetic generation.
 
@@ -283,51 +375,67 @@ Export manifests include SHA-256 checksums to support file-integrity verificatio
 
 Anomaly ground truth is maintained separately from the anomaly database to avoid using expected labels as validation inputs.
 
+The full-scale attendance generator uses deterministic random generation and batched inserts.
+
 The synthetic dataset is intended for development, testing, and demonstration rather than real-world transportation decisions.
 
-## 12. Current Limitations
+## 13. Current Limitations
 
 The following work remains in progress:
 
-- Full-scale route and assignment generation.
-- OR-Tools integration into the end-to-end routing workflow.
-- Historical bus-capacity and route-disruption event modeling.
-- Full-scale attendance and notification generation.
-- Expanded automated tests.
+- Automated pytest coverage for full-scale generators and end-to-end workflows.
+- A reusable full-scale validation command that consolidates all database checks.
 - API endpoints and dashboard implementation.
-- End-to-end workflow and performance validation.
+- Real-world traffic data, road-network travel times, and live GPS integration.
+- Production notification-provider integration.
+- School holiday calendars and more detailed operational scheduling.
+- Further route-optimization improvements and performance benchmarking.
 
-The current baseline operations generator is a starter implementation and should not be interpreted as a completed production-grade optimization engine.
+The full-scale routing workflow currently uses geographic clustering, approved-stop selection, and an OR-Tools travelling-salesperson path optimization.
 
-## 13. Development Roadmap
+Travel times are approximated using straight-line geographic distance and a fixed average speed. This is a synthetic planning model, not a production road-routing engine.
+
+Guardian notifications are simulated; no real SMS, email, or push notification is sent.
+
+The 200-day attendance calendar uses weekdays and does not model school holidays.
+
+## 14. Development Roadmap
 
 - [x] Relational database foundation.
-- [x] Eleven core database entities.
+- [x] Thirteen core database entities.
 - [x] Starter synthetic master data.
 - [x] Full-scale synthetic master data.
 - [x] Starter operations and assignments.
+- [x] Full-scale operations generation for 5,000 students and 100 buses.
+- [x] OR-Tools route-stop path optimization and pickup-window scheduling.
 - [x] Attendance event generation.
+- [x] Full-scale attendance generation: 2,000,000 events across 200 weekdays.
+- [x] Simulated guardian notifications for absence and missed-pickup events.
 - [x] Data validation.
 - [x] Controlled anomaly injection.
 - [x] Separate anomaly ground truth.
-- [x] CSV and JSON export with SHA-256 manifest.
-- [ ] Full-scale operations generation.
-- [ ] Constraint-based route optimization.
-- [ ] Historical operational event modeling.
-- [ ] Full-scale attendance and notifications.
-- [ ] Automated test suite.
+- [x] Starter CSV and JSON export with SHA-256 manifest.
+- [x] Full-scale batched CSV and JSONL export for all 13 tables.
+- [x] Verification of all 26 full-scale export files.
+- [x] Historical capacity and route-disruption event models and services.
+- [x] Full-scale capacity-change and route-disruption event history.
+- [x] Initial automated event-service tests (9 tests).
+- [x] Full-scale route, assignment, attendance, notification, event-history, foreign-key, and SQLite integrity checks (executed verification).
+- [ ] Expanded automated test coverage for generators, validators, and end-to-end workflows.
+- [ ] Consolidated automated end-to-end validation suite.
 - [ ] API and dashboard.
-- [ ] End-to-end validation.
+- [ ] Production notification integration and live operational data.
 
-## 14. Responsible AI Development
+## 15. Responsible AI Development
 
 AI-assisted development tools may be used during implementation. Generated code and suggestions must be reviewed, tested, and validated.
 
 The project aims to make its data assumptions, limitations, validation results, and development process transparent.
+
+The AI-assisted development activities and verification approach are documented in `docs/AI_USAGE.md`. The chronological prompt history should be maintained using the actual prompts submitted during development.
 
 ---
 
 **Repository:** [SchoolRoute-AI-](https://github.com/saisanthosharyan/SchoolRoute-AI-)
 
 **Status:** Active development.
-
