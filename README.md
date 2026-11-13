@@ -502,7 +502,7 @@ Available endpoints:
 
 Interactive API documentation:
 
-[http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+[API documentation](http://127.0.0.1:8000/docs)
 
 The dashboard summary exposes record counts for all 13 database entities.
 
@@ -520,7 +520,7 @@ python -m streamlit run dashboard.py
 
 Default address:
 
-[http://localhost:8501](http://localhost:8501)
+[Streamlit dashboard](http://localhost:8501)
 
 The dashboard includes:
 
