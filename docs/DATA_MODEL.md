@@ -4,7 +4,7 @@
 
 The database uses SQLite and SQLAlchemy ORM.
 
-The schema currently contains 13 tables covering master data, transportation
+The schema contains 13 tables covering master data, transportation
 operations, attendance, notifications, and historical operational events.
 
 Primary keys identify records. Foreign keys enforce referential integrity.
@@ -204,13 +204,18 @@ Implemented:
 - Full-scale attendance generation: 2,000,000 attendance events over 200 weekdays.
 - Simulated guardian notifications for absence and missed-pickup events.
 - Capacity-change and route-disruption event history in the full-scale database.
-- Nine automated event-service tests using an isolated in-memory SQLite database.
+- 10 automated data-validator tests using an isolated in-memory SQLite database.
+- 9 automated event-service tests using an isolated in-memory SQLite database.
+- 19 passing automated pytest tests in total.
 - Separate full-scale SQL checks for route feasibility, assignment consistency, attendance/notification relationships, foreign keys, and SQLite integrity.
+- FastAPI application with health and dashboard-summary endpoints.
+- Streamlit administration dashboard for operational overview, master data, routes, students, attendance, and alerts.
 
 Implementation limitations:
 
 - Geographic travel times use a straight-line distance approximation and fixed average speed, not live road-network data.
 - The generated school calendar excludes holiday modeling.
 - Guardian notifications are simulated; no external SMS, email, or push provider is connected.
-- Full-scale database checks have been executed, but not all are yet automated as pytest tests.
-- API endpoints, dashboard, live GPS, and production deployment workflows are not yet implemented.
+- Full-scale database checks have been executed, but not all are represented as automated pytest tests.
+- Broader API, dashboard, generator, and end-to-end integration tests remain future work.
+- Live GPS and production deployment workflows are not yet implemented.

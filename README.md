@@ -6,7 +6,7 @@ SchoolRoute AI is a school transportation management and optimization prototype 
 
 The project focuses on reliable data generation, constraint-aware student-to-route assignment, transportation safety validation, attendance monitoring, anomaly detection, and traceable operational decisions.
 
-> **Project status:** Functional prototype implemented. The 13-table relational database, full-scale synthetic dataset, route planning, student assignments, 200-day attendance simulation, simulated guardian notifications, operational event history, anomaly scenarios, validation, CSV/JSON/JSONL/SQL exports, FastAPI API, Streamlit administration dashboard, and initial automated tests are implemented. Expanded automated testing and production integrations remain future work.
+> **Project status:** Functional prototype implemented. The 13-table relational database, full-scale synthetic dataset, route planning, student assignments, 200-day attendance simulation, simulated guardian notifications, operational event history, anomaly scenarios, data validation, CSV/JSON/JSONL/SQL exports, FastAPI API, Streamlit administration dashboard, and 19 automated tests are implemented. Production integrations, independent full-scale regeneration comparison, and broader end-to-end testing remain future work.
 
 ---
 
@@ -49,15 +49,22 @@ The project focuses on reliable data generation, constraint-aware student-to-rou
 SchoolRoute-AI/
 |
 +-- app/
+|   +-- __init__.py
+|   +-- config.py
+|   +-- main.py
+|   |
 |   +-- analytics/
+|   |
 |   +-- api/
 |   |   +-- routes/
 |   |       +-- dashboard.py
+|   |
 |   +-- database/
 |   |   +-- base.py
 |   |   +-- connection.py
 |   |   +-- init_db.py
 |   |   +-- models.py
+|   |
 |   +-- generators/
 |   |   +-- master_data.py
 |   |   +-- full_master_data.py
@@ -69,8 +76,10 @@ SchoolRoute-AI/
 |   |   +-- export_data.py
 |   |   +-- export_full_data.py
 |   |   +-- export_sql.py
+|   |
 |   +-- services/
 |   |   +-- event_service.py
+|   |
 |   +-- validators/
 |       +-- data_validator.py
 |
@@ -88,6 +97,7 @@ SchoolRoute-AI/
 |   +-- verify_sql_export.py
 |
 +-- tests/
+|   +-- test_data_validator.py
 |   +-- test_event_service.py
 |
 +-- dashboard.py
@@ -117,7 +127,7 @@ The relational database currently contains 13 entities.
 | BusCapacityEvent | Historical bus capacity changes |
 | RouteDisruptionEvent | Route disruption and resolution history |
 
-Primary keys, foreign keys, relationships, cardinalities, optional relationships, lifecycle states, and validation responsibilities are documented in [docs/DATA_MODEL.md](docs/DATA_MODEL.md).
+Primary keys, foreign keys, relationships, cardinalities, optional relationships, lifecycle states, database constraints, and validation responsibilities are documented in [docs/DATA_MODEL.md](docs/DATA_MODEL.md).
 
 The design uses explicit event records to preserve operational history instead of silently overwriting previous state.
 
@@ -141,7 +151,7 @@ Configured full-scale targets:
 | Accessible buses | 20 |
 | School days | 200 |
 
-The full-scale database has been populated with:
+The populated full-scale database contains:
 
 - 5,000 students.
 - 6,239 guardian contacts.
@@ -171,6 +181,7 @@ Clone the repository:
 
 ```powershell
 git clone https://github.com/saisanthosharyan/SchoolRoute-AI-.git
+
 cd SchoolRoute-AI-
 ```
 
@@ -178,6 +189,7 @@ Create and activate a virtual environment:
 
 ```powershell
 python -m venv .venv
+
 .\.venv\Scripts\Activate.ps1
 ```
 
@@ -247,60 +259,86 @@ The existing full-scale database already contains the generated dataset. Do not 
 
 ## 7. Data Validation
 
-Run the baseline data validator:
+The project includes a data validator for the starter and full-scale databases.
+
+Run validation against the starter database:
 
 ```powershell
-python -m app.validators.data_validator
+python -m app.validators.data_validator --database starter
+```
+
+Run validation against the full-scale database:
+
+```powershell
+python -m app.validators.data_validator --database full
 ```
 
 The validator checks operational constraints including:
 
-- Primary-key uniqueness and foreign-key integrity.
+- Primary-key and foreign-key relationships.
 - Student assignment consistency.
 - Bus capacity.
 - Accessibility compatibility.
-- Approved pickup locations.
+- Address and stop approval.
 - Route-stop ordering.
 - Route travel-time and duration consistency.
 - Attendance event validity.
 - Guardian notification consistency.
+- Operational event-history lifecycle rules.
 
-A previously executed starter-dataset validation produced:
+**Previously verified validation results:**
 
-| Result | Count |
-|---|---:|
-| Checks passed | 2,443 |
-| Errors | 0 |
-| Warnings | 0 |
+| Database | Checks passed | Errors | Warnings |
+|---|---:|---:|---:|
+| Starter | 2,450 | 0 | 0 |
+| Full-scale | 2,065,978 | 0 | 0 |
 
-These figures describe that specific validation run, not a guarantee for every future generated dataset.
+These figures describe the specific validation runs performed on the current databases. They are not a guarantee for every future generated dataset.
 
 Separate full-scale database checks also verified route, assignment, attendance, notification, event-history, foreign-key, and SQLite integrity constraints.
 
 ## 8. Automated Tests
 
-The project includes nine automated event-service tests using an isolated in-memory SQLite database.
+The project includes 19 automated pytest tests using isolated in-memory SQLite databases.
 
-Run the test suite:
+Run the complete test suite:
 
 ```powershell
 python -m pytest -v
 ```
 
-The tests cover:
+### Data-validator tests (10)
 
-- Bus capacity changes.
-- Historical capacity event creation.
-- Invalid capacity inputs.
-- Route disruption creation.
+- Valid dataset validation.
+- Assignment stop and route consistency.
+- Bus capacity violations.
+- Accessible bus requirements.
+- Accessible pickup-stop requirements.
+- Active route stop requirements.
+- Attendance and assignment consistency.
+- Guardian and notification student consistency.
+- Notification and attendance student consistency.
+- Disruption resolution details.
+
+### Event-service tests (9)
+
+- Bus capacity changes and historical event creation.
+- Invalid and unchanged capacity rejection.
+- Route disruption creation and resolution.
 - Multiple simultaneous disruptions.
-- Invalid disruption inputs.
-- Disruption resolution.
-- Resolution lifecycle rules.
+- Invalid disruption type and severity.
+- Required resolution notes.
+- Prevention of repeated resolution.
 
-The tests use an isolated in-memory SQLite database and do not modify the starter or full-scale project databases.
+**Latest verified test result:**
 
-The current automated suite contains nine tests. Full-scale database integrity and operational checks have also been executed separately; those checks are not yet all represented as automated pytest tests.
+```text
+19 passed
+```
+
+All tests use isolated in-memory SQLite databases and do not modify the starter or full-scale project databases.
+
+Full-scale database validation has also been performed separately. Those checks are not all represented as automated pytest tests.
 
 ## 9. Anomaly Detection
 
@@ -322,6 +360,7 @@ If running the validator directly results in an import-path error, use:
 
 ```powershell
 $env:PYTHONPATH = (Get-Location).Path
+
 python scripts/validate_anomalies.py
 ```
 
@@ -463,7 +502,7 @@ Available endpoints:
 
 Interactive API documentation:
 
-`http://127.0.0.1:8000/docs`
+[http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
 
 The dashboard summary exposes record counts for all 13 database entities.
 
@@ -481,15 +520,15 @@ python -m streamlit run dashboard.py
 
 Default address:
 
-`http://localhost:8501`
+[http://localhost:8501](http://localhost:8501)
 
 The dashboard includes:
 
-- **Overview:** students, buses, routes, assignments, and database statistics.
-- **Routes:** route, bus, driver, stop, distance, duration, and status information.
-- **Students:** student search and assignment information.
-- **Attendance:** date-based pickup and drop-off attendance summaries.
-- **Alerts:** route disruption history, bus capacity changes, and notification records.
+- **Overview:** Students, buses, routes, assignments, and database statistics.
+- **Routes:** Route, bus, driver, stop, distance, duration, and status information.
+- **Students:** Student search and assignment information.
+- **Attendance:** Date-based pickup and drop-off attendance summaries.
+- **Alerts:** Route disruption history, bus capacity changes, and notification records.
 
 Synthetic guardian contact information and student home addresses are deliberately excluded from the dashboard views.
 
@@ -538,8 +577,8 @@ The synthetic dataset is intended for development, testing, and demonstration ra
 
 The following limitations remain:
 
-- Expanded automated pytest coverage for full-scale generators and end-to-end workflows.
-- A consolidated automated validation suite.
+- Automated tests for full-scale generators and complete end-to-end workflows.
+- Broader integration testing across the API, dashboard, generators, and database.
 - Independent full-scale regeneration and checksum comparison.
 - Real-world traffic data, road-network travel times, and live GPS integration.
 - Production notification-provider integration.
@@ -578,12 +617,14 @@ The project currently uses synthetic operational data and is not intended to mak
 - [x] SQL restoration, row-count, SQLite integrity, and foreign-key verification.
 - [x] Historical capacity and route-disruption event models and services.
 - [x] Full-scale capacity-change and route-disruption event history.
-- [x] Initial automated event-service tests (9 tests).
+- [x] Automated data-validator tests (10 tests).
+- [x] Automated event-service tests (9 tests).
+- [x] Complete pytest suite: 19 passing tests.
 - [x] FastAPI application and dashboard summary endpoint.
 - [x] Streamlit administration dashboard.
 - [x] Executed full-scale route, assignment, attendance, notification, event-history, foreign-key, and SQLite integrity checks.
-- [ ] Expanded automated test coverage for generators, validators, and end-to-end workflows.
-- [ ] Consolidated automated end-to-end validation suite.
+- [ ] Automated tests for full-scale generators and end-to-end workflows.
+- [ ] Broader API, dashboard, and database integration testing.
 - [ ] Independent full-scale regeneration and checksum comparison.
 - [ ] Production notification integration and live operational data.
 

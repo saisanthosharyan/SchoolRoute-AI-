@@ -1,4 +1,4 @@
-# AI Usage and Prompt History
+﻿# AI Usage and Prompt History
 
 ## 1. Purpose
 
@@ -17,7 +17,7 @@ AI assistance supported the following activities:
 - Attendance-event and guardian-notification simulation.
 - Historical bus-capacity and route-disruption event services.
 - SQL queries for data integrity and operational validation.
-- Automated test design and debugging.
+- Automated test design, implementation, and debugging.
 - FastAPI endpoint and Streamlit dashboard development.
 - SQL export, restoration verification, and documentation.
 
@@ -37,7 +37,14 @@ The developer executed the project locally and reviewed:
 - Automated pytest results.
 - SQLite database integrity and SQL restoration.
 
-The current automated test suite contains nine event-service tests. Additional full-scale database checks were executed separately.
+The automated pytest suite contains 19 passing tests:
+
+- 10 data-validator tests.
+- 9 event-service tests.
+
+The tests use isolated in-memory SQLite databases. Additional full-scale database checks were executed separately and are not all represented as automated pytest tests.
+
+The starter and full-scale databases were also validated separately. The latest recorded runs passed 2,450 and 2,065,978 checks respectively, with zero errors and zero warnings.
 
 ## 4. Prompt history
 
@@ -53,9 +60,10 @@ Where original prompts are recovered, they should be appended below in their ori
 
 ## 5. Limitations
 
-- AI-generated code may contain errors and requires testing.
+- AI-generated code may contain errors and requires testing and human review.
 - Synthetic validation does not establish production readiness.
 - Route travel times use geographic approximations rather than live road-network data.
 - Guardian notifications are simulated and are not delivered to real contacts.
-- The automated test suite has limited coverage beyond event-service operations.
+- Automated tests cover validator rules and event-service operations, but broader generator, API, dashboard, and end-to-end integration coverage remains incomplete.
+- Independent full-scale regeneration and checksum comparison remain future verification work.
 - The developer is responsible for final design decisions, code review, and submission.
